@@ -1,18 +1,14 @@
 variable "aws_region" {
   description = "AWS Region in which to deploy the DevOps Agent space."
   type        = string
-  default     = "eu-west-1"
+  default     = "eu-west-2"
 
   validation {
     condition = contains([
-      "us-east-1",
-      "us-west-2",
-      "ap-southeast-2",
-      "ap-northeast-1",
-      "eu-central-1",
+      "eu-west-2",
       "eu-west-1",
     ], var.aws_region)
-    error_message = "AWS DevOps Agent is available only in us-east-1, us-west-2, ap-southeast-2, ap-northeast-1, eu-central-1, and eu-west-1."
+    error_message = "AWS DevOps Agent must be in eu-west-2 or eu-west-1 for me."
   }
 }
 
