@@ -1,0 +1,36 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::899045892145:oidc-provider/app.terraform.io"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "app.terraform.io:aud": "aws.workload.identity"
+        },
+        "StringLike": {
+          "app.terraform.io:sub": "organization:smdevops96_org:project:Default Project:workspace:nightscout-infra:run_phase:*"
+        }
+      }
+    },
+    {
+      "Sid": "AllowAmazonDevOpsTerraformWorkspace",
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::899045892145:oidc-provider/app.terraform.io"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "app.terraform.io:aud": "aws.workload.identity"
+        },
+        "StringLike": {
+          "app.terraform.io:sub": "organization:smdevops96_org:project:Default Project:workspace:amazon-devops-terraform:run_phase:*"
+        }
+      }
+    }
+  ]
+}
