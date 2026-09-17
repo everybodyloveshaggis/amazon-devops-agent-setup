@@ -11,7 +11,7 @@ terraform {
     # Control provider rather than the standard AWS provider.
     awscc = {
       source  = "hashicorp/awscc"
-      version = "~> 1.0"
+      version = "~> 1.101"
     }
 
     random = {

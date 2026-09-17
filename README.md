@@ -6,6 +6,9 @@ the IAM operator app, and the required monitoring-account association. Once
 the apply succeeds, the agent is active for the account that supplied the AWS
 credentials.
 
+Optionally, it also registers Dynatrace as a capability provider and adds a
+Dynatrace environment to the managed Agent Space's telemetry capabilities.
+
 This is the AWS DevOps Agent service, not the Amazon Q Developer coding agent.
 
 ## Before you deploy
@@ -71,6 +74,111 @@ workspace for wider production infrastructure.
    aws devops-agent get-agent-space --agent-space-id (terraform output -raw agent_space_id) --region (terraform output -raw aws_region)
    ```
 
+## Dynatrace telemetry capability
+
+The optional `devops_agent_dynatrace` configuration implements the registration
+and association steps in [AWS's Dynatrace connection guide](https://docs.aws.amazon.com/devopsagent/latest/userguide/connecting-telemetry-sources-connecting-dynatrace.html).
+Leave it unset to deploy the existing AWS onboarding without Dynatrace.
+
+For a new registration, store the following JSON in AWS Secrets Manager:
+
+```json
+{
+  "DYNATRACE_ACCOUNT_URN": "urn:dtaccount:<your-account-uuid>",
+  "DYNATRACE_CLIENT_ID": "<oauth-client-id>",
+  "DYNATRACE_CLIENT_SECRET": "<oauth-client-secret>"
+}
+```
+
+Create the OAuth client with the permissions specified in the linked guide.
+These credentials are separate from the platform token used for AWS monitoring
+inside Dynatrace. The Terraform run role needs `secretsmanager:GetSecretValue`
+on this secret and `kms:Decrypt` if the secret uses a customer-managed KMS key,
+as well as Cloud Control and DevOps Agent registration/association permissions.
+Secret values are redacted from plans but stored in Terraform state; restrict
+access to the workspace's state.
+
+Add this to `terraform.tfvars`, or set the `devops_agent_dynatrace` workspace
+variable in HCP Terraform with HCL enabled (use only the object as its value):
+
+```hcl
+devops_agent_dynatrace = {
+  secret_arn     = "arn:aws:secretsmanager:eu-west-2:123456789012:secret:dynatrace-xxxxxx"
+  secret_region  = "eu-west-2"
+  client_name    = "scottstrialdtaccount"
+  environment_id = "abc12345"
+  resources      = [] # Optional entity IDs, e.g. SERVICE-0123456789ABCDEF
+}
+```
+
+The registration and telemetry association use `aws_region`, alongside the
+Agent Space already managed by this repository. No separate Agent Space ID is
+needed. `secret_region` defaults to `aws_region`; override it if the secret is
+stored elsewhere. `environment_id` is the short Dynatrace environment ID, not
+its URL. Entity IDs are optional and help topology discovery.
+
+Omit `environment_id` and `resources` to register the provider only. It can then
+be selected under **Agent Space > Capabilities > Telemetry > Add** in the AWS
+console. Supplying `environment_id` adds the capability automatically.
+
+### Reuse your manually registered provider
+
+Find your registration's `serviceId` using
+`aws devops-agent list-services --filter-service-type dynatrace --region <aws-region>`.
+Use that ID instead of supplying credentials:
+
+```hcl
+devops_agent_dynatrace = {
+  existing_service_id = "<registered-dynatrace-service-id>"
+  environment_id      = "abc12345"
+}
+```
+
+Terraform will reuse this registration without reading a secret or managing
+the registration's lifecycle. It must exist in this AWS account and region.
+If the environment is already added to this Agent Space, import the association
+before applying to avoid a duplicate. Find its `associationId` using
+`aws devops-agent list-associations --agent-space-id <agent-space-id> --region <aws-region>`,
+matching the Dynatrace service and environment. Configure the object above,
+then import:
+
+```sh
+terraform import 'awscc_devopsagent_association.dynatrace[0]' '<agent-space-id>|<association-id>'
+```
+
+For a remote HCP Terraform run with Terraform 1.5+, you can instead add a
+temporary import block:
+
+```hcl
+import {
+  to = awscc_devopsagent_association.dynatrace[0]
+  id = "<agent-space-id>|<association-id>"
+}
+```
+
+Run `terraform init`, review `terraform plan`, and apply. Outputs expose
+`devops_agent_dynatrace_service_id` and, when associated,
+`devops_agent_dynatrace_association_id`. Confirm the registration under
+**Capability Providers** and a valid association under the Agent Space's
+**Telemetry** section; a successful apply alone does not verify Dynatrace
+accepted the credentials. For automatic incident triggering and updates,
+complete the separate Dynatrace SRE Agents app setup described in the connection
+guide using the console's webhook details.
+
+## Local checks
+
+```sh
+terraform init -backend=false
+terraform fmt -check -recursive
+terraform validate
+terraform test
+```
+
+Tests require Terraform 1.7 or later. They use mocked providers and cover
+disabled mode, registration, attachment to this repository's Agent Space,
+reuse of a manual registration, and invalid credentials/configuration. They
+do not provision infrastructure; live connectivity requires an apply.
+
 ## IAM model
 
 By default Terraform creates two roles, both trusted only by
@@ -89,10 +197,9 @@ existing roles must meet the trust and managed-policy requirements described in
 
 ## Scope
 
-This baseline intentionally onboards only the account being deployed to. It
-does not add cross-account monitoring, third-party telemetry or source-control
-integrations, scheduled triggers, or custom-agent skills; each requires an
-explicit design and, for integrations, separate credentials.
+This configuration onboards the account being deployed to and optionally adds
+Dynatrace telemetry. It does not add cross-account monitoring, other third-party
+integrations, scheduled triggers, or custom-agent skills.
 
 To remove the Agent Space and its association later, run `terraform destroy`.
 This permanently deletes the Agent Space and its associated data.
