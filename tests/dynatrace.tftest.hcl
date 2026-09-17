@@ -121,7 +121,7 @@ run "reuse_manual_registration_without_secret" {
       length(awscc_devopsagent_service.dynatrace) == 0 &&
       length(data.aws_secretsmanager_secret_version.dynatrace) == 0 &&
       awscc_devopsagent_association.dynatrace[0].service_id == "manually-registered-dynatrace" &&
-      length(awscc_devopsagent_association.dynatrace[0].configuration.dynatrace.resources) == 0
+      awscc_devopsagent_association.dynatrace[0].configuration.dynatrace.env_id == "abc12345"
     )
     error_message = "Reusing a manual registration must not read credentials or create a duplicate provider; entity scoping is optional."
   }
