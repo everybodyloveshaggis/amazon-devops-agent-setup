@@ -59,8 +59,9 @@ resource "awscc_devopsagent_association" "dynatrace" {
   service_id     = local.devops_agent_dynatrace_service_id
   configuration = {
     dynatrace = {
-      env_id    = var.devops_agent_dynatrace.environment_id
-      resources = sort(tolist(var.devops_agent_dynatrace.resources))
+      env_id = var.devops_agent_dynatrace.environment_id
+      # Match the absent value returned for an unscoped association.
+      resources = length(var.devops_agent_dynatrace.resources) == 0 ? null : sort(tolist(var.devops_agent_dynatrace.resources))
     }
   }
 }
