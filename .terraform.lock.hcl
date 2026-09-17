@@ -26,7 +26,7 @@ provider "registry.terraform.io/hashicorp/aws" {
 
 provider "registry.terraform.io/hashicorp/awscc" {
   version     = "1.101.0"
-  constraints = "~> 1.0"
+  constraints = "~> 1.101"
   hashes = [
     "h1:3AXRwbuDHFezSZGBIdFJDiy6t8h9bie1kZXLYi7/ppk=",
     "zh:21c51bca2b53283501ef30c7db7220b12036bc42d0bb7d1b76ddcc47de93d22a",

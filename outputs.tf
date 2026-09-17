@@ -37,3 +37,13 @@ output "aws_region" {
   description = "AWS Region containing the Agent Space."
   value       = data.aws_region.current.name
 }
+
+output "devops_agent_dynatrace_service_id" {
+  description = "Registered Dynatrace capability provider ID; null when disabled."
+  value       = local.devops_agent_dynatrace_service_id
+}
+
+output "devops_agent_dynatrace_association_id" {
+  description = "Dynatrace telemetry association ID; null when no environment is configured."
+  value       = one(awscc_devopsagent_association.dynatrace[*].association_id)
+}
